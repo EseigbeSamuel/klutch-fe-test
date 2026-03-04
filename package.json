@@ -12,7 +12,7 @@
     "lint": "eslint src --ext .ts,.svelte"
   },
   "devDependencies": {
-    "@sveltejs/vite-plugin-svelte": "^3.0.1",
+    "@sveltejs/vite-plugin-svelte": "^3.1.2",
     "@tsconfig/svelte": "^5.0.2",
     "@types/node": "^20.10.0",
     "svelte": "^4.2.8",
