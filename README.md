@@ -1,3 +1,4 @@
+````markdown
 # Klutch AI Front-End Engineering Test
 
 ## Setup
@@ -6,44 +7,56 @@
 npm install
 npm run dev
 ```
+````
 
 Visit http://localhost:5173 to see the component.
 
 ## Overview
 
-You're working with a task management table. Currently read-only—your job is to make it interactive.
-
-The component uses **Mock API** (simulated backend in `src/mockApi.ts`) with realistic delays and 10% failure rate for testing error handling.
-
-## Your Tasks
-
-Complete **both tasks**:
-
-### Task 1: Inline Editing
-
-**Goal:** Let users edit task titles directly in the table.
-
-**What to build:**
-
-- Click on a task title to edit it
-- Save changes to the Mock API
-- Handle loading and error states
-- Allow canceling without saving
-
-**Note:** We're deliberately vague on interaction design (double-click? hover? icon?). Choose what feels right and explain why.
-
-The Mock API has a 10% failure rate—make sure your error handling works.
+A task management table with inline editing and batch operations built on top of a Mock API with realistic network delays and a 10% failure rate.
 
 ---
 
-### Task 2: Batch Operations
+## Task 1: Inline Editing
 
-**Goal:** Let users update multiple tasks at once.
+### What Was Built
 
-**What to build:**
+- Hover-to-reveal pencil icon next to each task title
+- Click the icon to enter edit mode with an auto-focused, auto-selected input
+- Save with the ✓ button or `Enter` key
+- Cancel with the ✗ button or `Escape` key
+- Spinner replaces the ✓ icon during the API call
+- Inline error message below the input on failure, with edited text preserved for retry
+- Row click (`selected` event) is suppressed while editing
 
-**Backend (Mock API):**
-Add a `updateTasksBatch()` method to `src/mockApi.ts`:
+### Interaction Pattern: Why a Hover Icon?
+
+A dedicated pencil icon was chosen over double-click for three reasons:
+
+1. **Discoverability** — double-click has no visual affordance. Users can't tell a field is editable without trying. The icon appears on hover, which is a pattern users already know from tools like Notion and Linear.
+2. **No conflict with text selection** — double-clicking on text natively selects the word, which fights with an edit trigger on the same element.
+3. **Keyboard accessibility** — the icon button is focusable and tabbable. Double-click has no keyboard equivalent.
+
+### Error Handling
+
+The Mock API fails ~10% of the time. On failure:
+
+- The input border turns red
+- An error message appears below the input
+- The user's edited text is preserved — no re-typing needed
+- Hitting `Enter` retries the save immediately
+
+### Event Flow
+
+`TaskTableRow` calls `getMockAPI().updateTask()`, reassigns its local `task` binding on success, then fires `dispatch('updated', updatedTask)`. `App.svelte` handles the event by replacing the task in the list via `tasks.map()`. The row component never directly mutates the shared list — the parent always owns the source of truth.
+
+---
+
+## Task 2: Batch Operations
+
+### What Was Built
+
+**Mock API (`mockApi.ts`):**
 
 ```typescript
 async updateTasksBatch(
@@ -52,42 +65,33 @@ async updateTasksBatch(
 ): Promise<ListableTask[]>
 ```
 
-Must validate all taskIds exist before updating any. Simulate network delay and errors like other methods.
+- Validates all task IDs exist before updating any (atomic)
+- Simulates 200–600ms network delay
+- 10% random failure rate
 
-**Frontend:**
-Build a UI for bulk actions. When multiple tasks are selected, show controls to change their status. Something like:
+**Frontend (`App.svelte`):**
 
-```
-[✓ 3 tasks selected]  [Change Status ▼]  [Cancel]
-```
+- Batch toolbar appears only when tasks are selected:
+  ```
+  [✓ N tasks selected]  [Set status: ▼]  [Cancel]
+  ```
+- Status dropdown resets to placeholder after each use
+- Success banner confirms how many tasks were updated and to which status
+- Error banner appears above the table on failure
+- Selection clears automatically after a successful batch update
+- Shift+Click range selection across rows
 
-Users should be able to:
+### Atomicity
 
-- Select multiple tasks (checkboxes work, but consider adding Shift+Click for ranges)
-- Change status of all selected tasks at once
-- See loading state during update
-- Get clear feedback if something fails
+`updateTasksBatch()` runs a full validation pass over all IDs before touching any of them. This mirrors database transaction behavior — either all updates succeed or none do. Partial updates would leave the UI in an inconsistent state that's hard to recover from.
 
-## Bonus (Optional)
+### Shift+Click Range Selection
 
-Finish early? Try:
+`App.svelte` tracks `lastCheckedIndex`. When a checkbox fires with `shiftKey: true`, every row between the last index and the current one is filled with the same selection state. This matches the behavior users expect from email clients and file managers, and makes selecting large ranges practical.
 
-- Shift+Click for range selection
-- Keyboard navigation (Tab, Enter, Escape)
-- Optimistic updates
-- Edit other fields (dates, assignees)
-- Unit tests
+### Error Handling
 
-## Submission
-
-**Submit:**
-
-1. Git repo or ZIP file with your code
-2. Brief summary (5-10 sentences):
-   - Task 1: What interaction pattern did you choose and why?
-   - Task 2: How did you approach batch updates?
-   - Any challenges or trade-offs?
-3. Screenshots or video showing it working
+Batch errors appear as a persistent banner above the table (not inline) since multiple rows are affected and there's no single row to anchor the error to. The banner uses the `ValidationError.message` string from the API directly, which already contains human-readable text.
 
 ---
 
@@ -96,77 +100,51 @@ Finish early? Try:
 ```
 src/
 ├── components/
-│   ├── TaskTableRow.svelte       # Main component to modify
+│   ├── TaskTableRow.svelte       # Inline editing + checkbox selection
 │   └── stubs/                    # UI components (Td, Tr, Pill, etc.)
 ├── types.ts                      # TypeScript types
-├── mockApi.ts                    # Simulated backend
+├── mockApi.ts                    # Simulated backend + batch method
 ├── mockData.ts                   # Sample tasks (5 tasks)
-├── App.svelte                    # Demo page
+├── App.svelte                    # Toolbar, selection state, batch update logic
 └── app.css                       # Styles
 ```
 
-## How It Works
+---
 
-**Data Flow:**
+## Data Flow
 
-1. `App.svelte` loads tasks from `MockAPI`
-2. `TaskTableRow` receives task props
-3. User edits → call `MockAPI.updateTask()`
-4. `TaskTableRow` emits 'updated' event
-5. `App.svelte` updates the task list
+### Inline Edit
 
-**Event Pattern:**
+1. User clicks pencil icon → `isEditing = true`
+2. User types and confirms → `getMockAPI().updateTask()`
+3. On success → `task = updatedTask`, `dispatch('updated', updatedTask)`
+4. `App.svelte` receives event → `tasks.map()` replaces the entry
 
-```svelte
-// Child emits
-dispatch('updated', updatedTask)
+### Batch Update
 
-// Parent listens
-<TaskTableRow on:updated={handleUpdate} />
-```
-
-## Mock API Usage
-
-```typescript
-import { getMockAPI } from "./mockApi";
-
-const api = getMockAPI();
-
-// Update a task
-try {
-  const updated = await api.updateTask("task-1", {
-    title: "New title",
-  });
-  // Success! Updated task returned
-} catch (error) {
-  // Handle error (10% failure rate)
-  alert("Failed: " + error.messages);
-}
-```
-
-**API Behavior:**
-
-- Delays: 200-600ms (simulates network)
-- Failures: 10% random rate
-- Validation: Rejects empty titles
-
-## TypeScript Types
-
-See `src/types.ts` for all types. Key ones:
-
-- `ListableTask` - Task object structure
-- `TaskStatus` - 'Open' | 'InProgress' | 'Completed' | etc.
-- `ValidationError` - Error class for API failures
+1. User selects tasks via checkboxes (with optional Shift+Click)
+2. User picks a status from the toolbar dropdown
+3. `getMockAPI().updateTasksBatch(selectedIds, { status })` is called
+4. On success → tasks array is merged with updated results, selection clears
+5. On failure → error banner shown, selection preserved so user can retry
 
 ---
 
-## What We're Looking For
+## Mock API Behavior
 
-- Does it work?
-- Is it intuitive to use?
-- Clean, readable code?
-- Proper error handling?
-- Good UX (loading states, feedback)?
-- Thoughtful design decisions?
+| Method               | Delay     | Failure Rate | Notes                            |
+| -------------------- | --------- | ------------ | -------------------------------- |
+| `updateTask()`       | 200–600ms | 10%          | Rejects empty titles             |
+| `updateTasksBatch()` | 200–600ms | 10%          | Atomic — validates all IDs first |
 
-Please share a github repo or send a zip file to gia@klutch.ai. Good luck!
+---
+
+## TypeScript
+
+- `TaskStatus` types the status dropdown value and batch payload — typos caught at build time
+- `CustomEvent<...>` generics on all handlers mean destructured payloads are fully typed
+- `ValidationError` from `types.ts` is used directly in catch blocks — no casting needed
+
+```
+
+```
