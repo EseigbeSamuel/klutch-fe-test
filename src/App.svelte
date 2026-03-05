@@ -9,7 +9,7 @@
   let tasks: ListableTask[] = []
   let selectedTaskIds = new Set<string>()
 
-  // Batch update state
+
   let isBatchLoading = false
   let batchError = ''
   let batchSuccess = ''
@@ -52,7 +52,7 @@
     tasks = tasks.map(t => (t.id === updatedTask.id ? updatedTask : t))
   }
 
-  // Supports shift+click range selection via rowIndex
+ 
   let lastCheckedIndex: number | null = null
 
   function handleCheckboxChange(event: CustomEvent<{
@@ -75,7 +75,7 @@
     }
 
     lastCheckedIndex = rowIndex
-    selectedTaskIds = selectedTaskIds // trigger reactivity
+    selectedTaskIds = selectedTaskIds 
     batchError = ''
     batchSuccess = ''
   }
@@ -104,7 +104,7 @@
     try {
       const ids = [...selectedTaskIds]
       const updatedTasks = await getMockAPI().updateTasksBatch(ids, {status})
-      // Merge updates back into task list
+      
       const updatedMap = new Map(updatedTasks.map(t => [t.id, t]))
       tasks = tasks.map(t => updatedMap.get(t.id) ?? t)
       batchSuccess = `Updated ${updatedTasks.length} task${updatedTasks.length === 1 ? '' : 's'} to "${STATUS_LABELS[status]}"`
@@ -113,7 +113,7 @@
       batchError = err?.message ?? 'Batch update failed. Please try again.'
     } finally {
       isBatchLoading = false
-      // Reset the dropdown
+     
       ;(e.target as HTMLSelectElement).value = ''
     }
   }
@@ -184,14 +184,14 @@
     </div>
   {/if}
 
-  <!-- Feedback messages -->
+   <!-- Feedback messages  -->
   {#if batchSuccess}
     <div style="
       padding: 0.75rem 1rem; margin-bottom: 1rem;
       background: #f0fdf4; border: 1px solid #bbf7d0;
       border-radius: 8px; color: #15803d; font-size: 0.875rem;
     ">
-      ✅ {batchSuccess}
+       {batchSuccess}
     </div>
   {/if}
   {#if batchError}
@@ -200,7 +200,7 @@
       background: #fef2f2; border: 1px solid #fecaca;
       border-radius: 8px; color: #dc2626; font-size: 0.875rem;
     ">
-      ⚠️ {batchError}
+       {batchError}
     </div>
   {/if}
 

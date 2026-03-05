@@ -28,7 +28,7 @@
     }
   }>()
 
-  // --- Task 1: Inline editing ---
+  // Task 1: Inline editing 
   let isEditing = false
   let editedTitle = ''
   let isLoading = false
@@ -86,7 +86,7 @@
     node.focus()
     node.select()
   }
-  // --- End Task 1 ---
+  //  End Task 1 
 
   function handleClick(): void {
     if (!isEditing) dispatch('selected', task)
